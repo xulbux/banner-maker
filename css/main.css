@@ -123,6 +123,23 @@ input[type="number"]::-webkit-outer-spin-button:hover {
   background-color: var(--gray-800);
 }
 
+input[list] {
+  padding-right: 24px;
+  cursor: pointer;
+}
+input[list]::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  width: 20px;
+  height: 100%;
+  cursor: pointer;
+}
+input[list]:hover {
+  background-size: 14px 10px;
+  background-repeat: no-repeat;
+  background-position: right 8px top 55%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23737373' d='M3 1.5 L5.5 4.5 C5.8 4.9 6.2 4.9 6.5 4.5 L9 1.5 L8.5 1 L3.5 1 Z' stroke='%23737373' stroke-width='1' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
 input[type="color"] {
   cursor: pointer;
   height: 40px;

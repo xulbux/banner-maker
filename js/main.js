@@ -6,10 +6,25 @@ const initImg = 'assets/img/banner_img_sample.jpg';
 const initFixWidth = null;
 const initFixHeight = 360;
 
+const fixWidthRange = { min: 500, max: 10000 };
+const fixHeightRange = { min: 140, max: 1000 };
+const commonAspectRatios = [
+  { w: 1, h: 1, label: '1:1 (Square)' },
+  { w: 16, h: 9, label: '16:9 (Widescreen)' },
+  { w: 9, h: 16, label: '9:16 (Portrait)' },
+  { w: 4, h: 3, label: '4:3 (Standard)' },
+  { w: 3, h: 4, label: '3:4 (Portrait)' },
+  { w: 21, h: 9, label: '21:9 (Ultrawide)' },
+  { w: 3, h: 2, label: '3:2 (Classic)' },
+  { w: 2, h: 3, label: '2:3 (Portrait)' },
+  { w: 5, h: 4, label: '5:4 (Monitor)' },
+];
+
 const inputTxt = document.getElementById('input-txt');
 const inputTxtColor = document.getElementById('input-txt-color');
 const inputCardTint = document.getElementById('input-card-tint');
 const inputImg = document.getElementById('input-img');
+const inputAspectRatio = document.getElementById('input-aspect-ratio');
 const inputFixWidth = document.getElementById('input-fix-width');
 const inputFixHeight = document.getElementById('input-fix-height');
 const bannerPreview = document.getElementById('banner-preview');
@@ -24,8 +39,18 @@ let imgOffsetX = 0, imgOffsetY = 0; // PIXEL OFFSET FROM CENTER
 let isDragging = false;
 let dragStartX = 0, dragStartY = 0;
 let dragStartOffsetX = 0, dragStartOffsetY = 0;
+let isUpdatingAspectRatio = false;
 
 function setInitValues() {
+  // POPULATE ASPECT RATIO DATALIST
+  const aspectRatioDatalist = document.getElementById('aspect-ratio-presets');
+  commonAspectRatios.forEach(ratio => {
+    const option = document.createElement('option');
+    option.value = `${ratio.w}:${ratio.h}`;
+    option.textContent = ratio.label;
+    aspectRatioDatalist.appendChild(option);
+  });
+
   inputTxt.value = initTxt;
   inputTxtColor.value = initTxtColor;
   inputCardTint.value = initCardTint;
@@ -58,36 +83,117 @@ function setInitValues() {
 
 setInitValues();
 
-function setFixWidth(width = null) {
+function setFixWidth(width = null, wasAutoSet = false) {
   if (width == null || isNaN(width)) {
     bannerPreview.style.width = 'auto';
   }
   else {
-    if (width < 500) {
-      width = 500;
-    } else if (width > 10_000) {
-      width = 10_000;
+    if (width < fixWidthRange.min) {
+      width = fixWidthRange.min;
+      if (wasAutoSet)
+        inputFixWidth.value = width;
+    } else if (width > fixWidthRange.max) {
+      width = fixWidthRange.max;
       inputFixWidth.value = width;
     }
     bannerPreview.style.width = `${width}px`;
   }
   updateImageDraggability();
+  updateAspectRatioDisplay(previewImg.width, previewImg.height);
 }
 
-function setFixHeight(height = null) {
+function setFixHeight(height = null, wasAutoSet = false) {
   if (height == null || isNaN(height)) {
     bannerPreview.style.height = 'auto';
   }
   else {
-    if (height < 140) {
-      height = 140;
-    } else if (height > 1000) {
-      height = 1000;
+    if (height < fixHeightRange.min) {
+      height = fixHeightRange.min;
+      if (wasAutoSet)
+        inputFixHeight.value = height;
+    } else if (height > fixHeightRange.max) {
+      height = fixHeightRange.max;
       inputFixHeight.value = height;
     }
     bannerPreview.style.height = `${height}px`;
   }
   updateImageDraggability();
+  updateAspectRatioDisplay(previewImg.width, previewImg.height);
+}
+
+function parseAspectRatio(ratioString) {
+  // PARSE ASPECT RATIO FROM STRING LIKE "16:9" OR "16/9"
+  const match = ratioString.trim().match(/^(\d+(?:\.\d+)?)[:/](\d+(?:\.\d+)?)$/);
+  if (match) {
+    return {
+      width: parseFloat(match[1]),
+      height: parseFloat(match[2])
+    };
+  }
+  return null;
+}
+
+function applyAspectRatio(ratioString) {
+  const ratio = parseAspectRatio(ratioString);
+  if (!ratio) return;
+
+  isUpdatingAspectRatio = true;
+
+  const width = parseInt(inputFixWidth.value, 10);
+  const height = parseInt(inputFixHeight.value, 10);
+
+  // DETERMINE WHICH DIMENSION TO USE AS BASE
+  // IF BOTH ARE SET, USE WIDTH AS BASE
+  // IF ONLY ONE IS SET, USE THAT ONE
+  // IF NEITHER IS SET, USE A DEFAULT BASE OF 1000
+  if (width && !isNaN(width)) {
+    const calculatedHeight = Math.round(width / (ratio.width / ratio.height));
+    inputFixHeight.value = calculatedHeight;
+    setFixHeight(calculatedHeight, true);
+  } else if (height && !isNaN(height)) {
+    const calculatedWidth = Math.round(height * (ratio.width / ratio.height));
+    inputFixWidth.value = calculatedWidth;
+    setFixWidth(calculatedWidth, true);
+  } else {
+    const baseWidth = previewImg.width;
+    const calculatedHeight = Math.round(baseWidth / (ratio.width / ratio.height));
+    inputFixWidth.value = baseWidth;
+    inputFixHeight.value = calculatedHeight;
+    setFixWidth(baseWidth, true);
+    setFixHeight(calculatedHeight, true);
+  }
+
+  isUpdatingAspectRatio = false;
+}
+
+function updateAspectRatioDisplay(width, height) {
+  if (isUpdatingAspectRatio) return;
+
+  // ONLY UPDATE IF BOTH WIDTH AND HEIGHT ARE SET
+  if (width && !isNaN(width) && height && !isNaN(height)) {
+    const actualRatio = width / height;
+
+    // CHECK IF ACTUAL RATIO IS CLOSE TO ANY COMMON RATIO (WITHIN 1% TOLERANCE)
+    const tolerance = 0.01;
+    for (const ratio of commonAspectRatios) {
+      const commonRatioValue = ratio.w / ratio.h;
+      if (Math.abs(actualRatio - commonRatioValue) / commonRatioValue < tolerance) {
+        // CLOSE ENOUGH TO A COMMON RATIO, USE IT
+        inputAspectRatio.value = `${ratio.w}:${ratio.h}`;
+        return;
+      }
+    }
+
+    // NOT CLOSE TO ANY COMMON RATIO, CALCULATE GCD TO SIMPLIFY
+    const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
+    const divisor = gcd(width, height);
+    const ratioWidth = width / divisor;
+    const ratioHeight = height / divisor;
+
+    inputAspectRatio.value = `${ratioWidth}:${ratioHeight}`;
+  } else {
+    inputAspectRatio.value = '';
+  }
 }
 
 function updateImagePosition() {
@@ -232,6 +338,16 @@ inputImg.addEventListener('change', (e) => {
 // IMAGE LOADED EVENT - UPDATE DRAGGABILITY
 previewImg.addEventListener('load', () => {
   updateImageDraggability();
+});
+
+// HANDLE ASPECT RATIO INPUT
+inputAspectRatio.addEventListener('input', (e) => {
+  applyAspectRatio(e.target.value);
+});
+
+// SELECT ALL TEXT IN ASPECT RATIO INPUT WHEN FOCUSED
+inputAspectRatio.addEventListener('focus', (e) => {
+  e.target.select();
 });
 
 // HANDLE FIX WIDTH INPUT
