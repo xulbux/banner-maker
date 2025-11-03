@@ -16,6 +16,7 @@ const bannerPreview = document.getElementById('banner-preview');
 const previewTxt = document.getElementById('preview-txt');
 const previewCard = document.getElementById('preview-card');
 const previewImg = document.getElementById('preview-img');
+const previewDragHint = document.getElementById('preview-drag-hint');
 
 let currentImg = null;
 let imgPosX = 50, imgPosY = 50; // PERCENTAGE (0-100)
@@ -158,9 +159,11 @@ function updateImageDraggability() {
     previewImg.dataset.draggable = 'true';
     previewImg.dataset.dragX = canDragX;
     previewImg.dataset.dragY = canDragY;
+    previewDragHint.classList.add('visible');
   } else {
     previewImg.style.cursor = 'default';
     previewImg.dataset.draggable = 'false';
+    previewDragHint.classList.remove('visible');
     // RESET POSITION WHEN NOT CROPPED
     imgPosX = 50, imgPosY = 50;
     imgOffsetX = 0, imgOffsetY = 0;
