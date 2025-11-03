@@ -41,8 +41,19 @@ async function exportBanner(bannerElement, imgElement, cardElement, txtElement, 
     let targetWidth, targetHeight;
 
     if (fixWidth && fixHeight) {
-      targetWidth = fixWidth;
-      targetHeight = fixHeight;
+      // USE FIX DIMENSIONS TO CALCULATE ASPECT RATIO, THEN APPLY TO ORIGINAL IMAGE
+      const targetAspectRatio = fixWidth / fixHeight;
+      const imgAspectRatio = imgNaturalWidth / imgNaturalHeight;
+
+      if (imgAspectRatio > targetAspectRatio) {
+        // IMAGE IS WIDER - FIT TO HEIGHT
+        targetHeight = imgNaturalHeight;
+        targetWidth = Math.round(imgNaturalHeight * targetAspectRatio);
+      } else {
+        // IMAGE IS TALLER - FIT TO WIDTH
+        targetWidth = imgNaturalWidth;
+        targetHeight = Math.round(imgNaturalWidth / targetAspectRatio);
+      }
     } else if (fixWidth || fixHeight) {
       const previewAspectRatio = currentRect.width / currentRect.height;
       const imgAspectRatio = imgNaturalWidth / imgNaturalHeight;
@@ -53,7 +64,7 @@ async function exportBanner(bannerElement, imgElement, cardElement, txtElement, 
       } else {
         targetHeight = imgNaturalHeight;
         targetWidth = Math.round(imgNaturalHeight * previewAspectRatio);
-      }
+      } 
     } else {
       targetWidth = imgNaturalWidth;
       targetHeight = imgNaturalHeight;
