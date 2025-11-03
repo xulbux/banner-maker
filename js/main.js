@@ -153,7 +153,7 @@ function generateNoiseTexture(width, height) {
       <rect width='100%' height='100%' filter='url(#noiseFilter)'/>
     </svg>
   `.trim();
-  
+
   const encoded = encodeURIComponent(svg);
   return `url("data:image/svg+xml,${encoded}")`;
 }
@@ -185,10 +185,10 @@ dlBtn.addEventListener('click', () => {
     alert('Please upload an image first!');
     return;
   }
-  
+
   const fixWidth = parseInt(inputFixWidth.value, 10) || null;
   const fixHeight = parseInt(inputFixHeight.value, 10) || null;
-  
+
   exportBanner(
     bannerPreview,
     previewImg,
