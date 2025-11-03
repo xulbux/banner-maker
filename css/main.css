@@ -21,11 +21,13 @@ body {
 }
 
 header {
+  gap: 32px;
   width: 100%;
   padding: 16px 24px;
   display: flex;
-  flex-direction: row;
+  text-align: left;
   align-items: center;
+  flex-direction: row;
   justify-content: space-between;
   box-shadow: 0 0 0 0.5px var(--border-2-color);
 }
@@ -105,10 +107,12 @@ input[type="file"]::file-selector-button {
 }
 input[type="file"]::file-selector-button:hover { background-color: var(--btn-2-bg-hover-color) }
 
+
 #dl-btn {
   gap: 10px;
   padding: 7px 12px;
   font-size: 1rem;
+  white-space: nowrap;
   border: 1px solid color-mix(in srgb, var(--border-1-color) 60%, transparent);
   background-color: var(--btn-1-bg-color);
 
@@ -192,6 +196,21 @@ input[type="file"]::file-selector-button:hover { background-color: var(--btn-2-b
 }
 #preview-img.loaded { display: block }
 
+#preview-too-small-txt {
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  padding: 20px;
+  font-size: 1.25rem;
+  display: none;
+  text-align: center;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  color: var(--gray-500);
+}
+
+
 .header-title {
   margin: 0;
   font-size: 2rem;
@@ -230,4 +249,20 @@ input[type="file"]::file-selector-button:hover { background-color: var(--btn-2-b
 .preview-container {
   width: 100%;
   overflow: auto;
+}
+
+
+@media (max-width: 340px) {
+  header {
+    gap: 10px;
+    text-align: center;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  #preview-txt { display: none !important }
+  #preview-card { display: none !important }
+  #preview-img { display: none !important }
+
+  #preview-too-small-txt { display: flex !important }
 }
