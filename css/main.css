@@ -342,10 +342,12 @@ input[type="file"]::file-selector-button:hover { background-color: var(--btn-2-b
     flex-direction: column;
     justify-content: center;
   }
+}
 
+@media (max-width: 300px) {
+  #preview-too-small-txt { display: flex !important }
+  #preview-drag-hint { display: none !important }
   #preview-txt { display: none !important }
   #preview-card { display: none !important }
   #preview-img { display: none !important }
-
-  #preview-too-small-txt { display: flex !important }
 }
