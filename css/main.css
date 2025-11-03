@@ -60,14 +60,17 @@ main {
   padding: 0 24px;
 }
 
+img { user-select: none }
+
 button {
   gap: 8px;
   padding: 5px 9px;
   border-radius: 6px;
   cursor: pointer;
   display: flex;
-  flex-direction: row;
+  user-select: none;
   align-items: center;
+  flex-direction: row;
   justify-content: center;
   font-weight: 500;
   font-family: inherit;
@@ -186,6 +189,7 @@ input[type="file"]::file-selector-button:hover { background-color: var(--btn-2-b
 #preview-txt {
   opacity: 0.8;
   position: relative;
+  user-select: none;
   pointer-events: none;
   mix-blend-mode: multiply;
   font-size: 3.5rem;

@@ -29,8 +29,10 @@ function hexToRgb(hex) {
  * @param {number|null} fixWidth - fixed width for export (or null)
  * @param {number|null} fixHeight - fixed height for export (or null)
  * @param {string} cardTintColor - the card tint color in hex format
+ * @param {number} imgPosX - horizontal image position percentage (0-100)
+ * @param {number} imgPosY - vertical image position percentage (0-100)
  */
-async function exportBanner(bannerElement, imgElement, cardElement, txtElement, fixWidth, fixHeight, cardTintColor) {
+async function exportBanner(bannerElement, imgElement, cardElement, txtElement, fixWidth, fixHeight, cardTintColor, imgPosX, imgPosY) {
   try {
     const currentRect = bannerElement.getBoundingClientRect();
     const imgNaturalWidth = imgElement.naturalWidth;
@@ -75,6 +77,29 @@ async function exportBanner(bannerElement, imgElement, cardElement, txtElement, 
     });
 
     ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+
+    // CALCULATE IMAGE POSITIONING IF CROPPED
+    const imgAspect = img.naturalWidth / img.naturalHeight;
+    const targetAspect = targetWidth / targetHeight;
+    
+    let drawX = 0, drawY = 0, drawWidth = targetWidth, drawHeight = targetHeight;
+    let sourceX = 0, sourceY = 0, sourceWidth = img.naturalWidth, sourceHeight = img.naturalHeight;
+    
+    if (imgAspect > targetAspect) {
+      // Image is wider - crop horizontally
+      const scaledWidth = img.naturalHeight * targetAspect;
+      const cropAmount = img.naturalWidth - scaledWidth;
+      sourceX = cropAmount * (imgPosX / 100);
+      sourceWidth = scaledWidth;
+    } else if (imgAspect < targetAspect) {
+      // Image is taller - crop vertically
+      const scaledHeight = img.naturalWidth / targetAspect;
+      const cropAmount = img.naturalHeight - scaledHeight;
+      sourceY = cropAmount * (imgPosY / 100);
+      sourceHeight = scaledHeight;
+    }
+    
+    ctx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, drawX, drawY, drawWidth, drawHeight);
 
     // GET CARD MEASUREMENTS
     const cardRect = cardElement.getBoundingClientRect();

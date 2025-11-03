@@ -18,6 +18,15 @@ const previewCard = document.getElementById('preview-card');
 const previewImg = document.getElementById('preview-img');
 
 let currentImg = null;
+let imgPosX = 50; // percentage (0-100)
+let imgPosY = 50; // percentage (0-100)
+let imgOffsetX = 0; // pixel offset from center
+let imgOffsetY = 0; // pixel offset from center
+let isDragging = false;
+let dragStartX = 0;
+let dragStartY = 0;
+let dragStartOffsetX = 0;
+let dragStartOffsetY = 0;
 
 function setInitValues() {
   inputTxt.value = initTxt;
@@ -65,6 +74,7 @@ function setFixWidth(width = null) {
     }
     bannerPreview.style.width = `${width}px`;
   }
+  updateImageDraggability();
 }
 
 function setFixHeight(height = null) {
@@ -79,6 +89,89 @@ function setFixHeight(height = null) {
       inputFixHeight.value = height;
     }
     bannerPreview.style.height = `${height}px`;
+  }
+  updateImageDraggability();
+}
+
+function updateImagePosition() {
+  const bannerRect = bannerPreview.getBoundingClientRect();
+  const imgAspect = previewImg.naturalWidth / previewImg.naturalHeight;
+  const bannerAspect = bannerRect.width / bannerRect.height;
+  
+  // Calculate the displayable image dimensions and overflow
+  let displayWidth, displayHeight, overflowX = 0, overflowY = 0;
+  
+  if (imgAspect > bannerAspect) {
+    // Image is wider - will overflow horizontally
+    displayHeight = bannerRect.height;
+    displayWidth = displayHeight * imgAspect;
+    overflowX = displayWidth - bannerRect.width;
+  } else {
+    // Image is taller - will overflow vertically
+    displayWidth = bannerRect.width;
+    displayHeight = displayWidth / imgAspect;
+    overflowY = displayHeight - bannerRect.height;
+  }
+  
+  // Convert pixel offset to percentage, clamping to valid range
+  if (overflowX > 0) {
+    const maxOffset = overflowX / 2;
+    const clampedOffsetX = Math.max(-maxOffset, Math.min(maxOffset, imgOffsetX));
+    imgPosX = 50 + (clampedOffsetX / overflowX) * 100;
+    imgOffsetX = clampedOffsetX; // Update to clamped value
+  } else {
+    imgPosX = 50;
+    imgOffsetX = 0;
+  }
+  
+  if (overflowY > 0) {
+    const maxOffset = overflowY / 2;
+    const clampedOffsetY = Math.max(-maxOffset, Math.min(maxOffset, imgOffsetY));
+    imgPosY = 50 + (clampedOffsetY / overflowY) * 100;
+    imgOffsetY = clampedOffsetY; // Update to clamped value
+  } else {
+    imgPosY = 50;
+    imgOffsetY = 0;
+  }
+  
+  previewImg.style.objectPosition = `${imgPosX}% ${imgPosY}%`;
+}
+
+function updateImageDraggability() {
+  if (!previewImg.naturalWidth || !previewImg.naturalHeight) return;
+
+  const fixWidth = parseInt(inputFixWidth.value, 10);
+  const fixHeight = parseInt(inputFixHeight.value, 10);
+  const bannerRect = bannerPreview.getBoundingClientRect();
+  
+  const imgAspect = previewImg.naturalWidth / previewImg.naturalHeight;
+  const bannerAspect = bannerRect.width / bannerRect.height;
+  
+  // Determine if image is cropped on X or Y axis
+  const canDragX = (fixWidth || fixHeight) && imgAspect > bannerAspect;
+  const canDragY = (fixWidth || fixHeight) && imgAspect < bannerAspect;
+  
+  if (canDragX || canDragY) {
+    // Set cursor based on drag direction
+    if (canDragX && canDragY) {
+      previewImg.style.cursor = 'move';
+    } else if (canDragX) {
+      previewImg.style.cursor = 'ew-resize';
+    } else if (canDragY) {
+      previewImg.style.cursor = 'ns-resize';
+    }
+    previewImg.dataset.draggable = 'true';
+    previewImg.dataset.dragX = canDragX;
+    previewImg.dataset.dragY = canDragY;
+  } else {
+    previewImg.style.cursor = 'default';
+    previewImg.dataset.draggable = 'false';
+    // Reset position when not cropped
+    imgPosX = 50;
+    imgPosY = 50;
+    imgOffsetX = 0;
+    imgOffsetY = 0;
+    updateImagePosition();
   }
 }
 
@@ -125,6 +218,11 @@ inputImg.addEventListener('change', (e) => {
       currentImg = event.target.result;
       previewImg.src = currentImg;
       previewImg.classList.add('loaded');
+      imgPosX = 50;
+      imgPosY = 50;
+      imgOffsetX = 0;
+      imgOffsetY = 0;
+      updateImagePosition();
       setFixWidth(parseInt(inputFixWidth.value, 10));
       setFixHeight(parseInt(inputFixHeight.value, 10));
     };
@@ -135,6 +233,11 @@ inputImg.addEventListener('change', (e) => {
   }
 });
 
+// IMAGE LOADED EVENT - UPDATE DRAGGABILITY
+previewImg.addEventListener('load', () => {
+  updateImageDraggability();
+});
+
 // HANDLE FIX WIDTH INPUT
 inputFixWidth.addEventListener('input', (e) => {
   setFixWidth(parseInt(e.target.value, 10));
@@ -143,6 +246,48 @@ inputFixWidth.addEventListener('input', (e) => {
 // HANDLE FIX HEIGHT INPUT
 inputFixHeight.addEventListener('input', (e) => {
   setFixHeight(parseInt(e.target.value, 10));
+});
+
+// IMAGE DRAG FUNCTIONALITY
+previewImg.addEventListener('mousedown', (e) => {
+  if (previewImg.dataset.draggable !== 'true') return;
+  
+  isDragging = true;
+  dragStartX = e.clientX;
+  dragStartY = e.clientY;
+  dragStartOffsetX = imgOffsetX;
+  dragStartOffsetY = imgOffsetY;
+  
+  previewImg.style.userSelect = 'none';
+  e.preventDefault();
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  
+  const canDragX = previewImg.dataset.dragX === 'true';
+  const canDragY = previewImg.dataset.dragY === 'true';
+  
+  if (canDragX) {
+    const deltaX = e.clientX - dragStartX;
+    // Direct pixel-based movement (inverted because object-position works opposite to drag direction)
+    imgOffsetX = dragStartOffsetX - deltaX;
+  }
+  
+  if (canDragY) {
+    const deltaY = e.clientY - dragStartY;
+    // Direct pixel-based movement (inverted because object-position works opposite to drag direction)
+    imgOffsetY = dragStartOffsetY - deltaY;
+  }
+  
+  updateImagePosition();
+});
+
+document.addEventListener('mouseup', () => {
+  if (isDragging) {
+    isDragging = false;
+    previewImg.style.userSelect = '';
+  }
 });
 
 // DYNAMIC NOISE TEXTURE GENERATION
@@ -198,6 +343,8 @@ dlBtn.addEventListener('click', () => {
     previewTxt,
     fixWidth,
     fixHeight,
-    inputCardTint.value
+    inputCardTint.value,
+    imgPosX,
+    imgPosY
   );
 });
