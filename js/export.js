@@ -1,34 +1,35 @@
 /**
- * Export functionality for the banner maker
- * Manually renders the banner to canvas for pixel-perfect export
- */
-
-/**
  * Helper to get computed CSS value
+ * @param {HTMLElement} element - the element to get the style from
+ * @param {string} property - the CSS property name
+ * @returns {string}
  */
-function getComputed(element, property) {
-  return window.getComputedStyle(element).getPropertyValue(property).trim();
-}
+const getComputed = (element, property) => window.getComputedStyle(element).getPropertyValue(property).trim();
 
 /**
  * Exports the banner as a PNG image
+ * @param {HTMLElement} bannerElement - the banner preview element
+ * @param {HTMLImageElement} imgElement - the image element inside the banner
+ * @param {HTMLElement} cardElement - the card element inside the banner
+ * @param {HTMLElement} txtElement - the text element inside the banner
+ * @param {number|null} fixWidth - fixed width for export (or null)
+ * @param {number|null} fixHeight - fixed height for export (or null)
  */
 async function exportBanner(bannerElement, imgElement, cardElement, txtElement, fixWidth, fixHeight) {
   try {
     const currentRect = bannerElement.getBoundingClientRect();
     const imgNaturalWidth = imgElement.naturalWidth;
     const imgNaturalHeight = imgElement.naturalHeight;
-    
-    // Determine target dimensions
+
     let targetWidth, targetHeight;
-    
+
     if (fixWidth && fixHeight) {
       targetWidth = fixWidth;
       targetHeight = fixHeight;
     } else if (fixWidth || fixHeight) {
       const previewAspectRatio = currentRect.width / currentRect.height;
       const imgAspectRatio = imgNaturalWidth / imgNaturalHeight;
-      
+
       if (previewAspectRatio > imgAspectRatio) {
         targetWidth = imgNaturalWidth;
         targetHeight = Math.round(imgNaturalWidth / previewAspectRatio);
@@ -43,13 +44,13 @@ async function exportBanner(bannerElement, imgElement, cardElement, txtElement, 
     
     const scale = targetWidth / currentRect.width;
     
-    // Create canvas
+    // CREATE CANVAS
     const canvas = document.createElement('canvas');
     canvas.width = targetWidth;
     canvas.height = targetHeight;
     const ctx = canvas.getContext('2d');
     
-    // Draw background image
+    // DRAW BACKGROUND IMAGE
     const img = new Image();
     img.crossOrigin = 'anonymous';
     await new Promise((resolve, reject) => {
@@ -60,7 +61,7 @@ async function exportBanner(bannerElement, imgElement, cardElement, txtElement, 
     
     ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
     
-    // Get card measurements
+    // GET CARD MEASUREMENTS
     const cardRect = cardElement.getBoundingClientRect();
     const bannerRect = bannerElement.getBoundingClientRect();
     
@@ -70,7 +71,7 @@ async function exportBanner(bannerElement, imgElement, cardElement, txtElement, 
     const cardHeight = (cardRect.height / currentRect.height) * targetHeight;
     const cardRadius = parseFloat(getComputed(cardElement, 'border-radius')) * scale;
     
-    // Create blurred backdrop
+    // CREATE BLURRED BACKDROP
     const blurRadius = 12 * scale;
     const blurCanvas = document.createElement('canvas');
     const padding = Math.ceil(blurRadius * 2);
@@ -89,12 +90,12 @@ async function exportBanner(bannerElement, imgElement, cardElement, txtElement, 
       blurCanvas.height
     );
     
-    // Apply blur
+    // APPLY BLUR
     if (typeof StackBlur !== 'undefined') {
       StackBlur.canvasRGB(blurCanvas, 0, 0, blurCanvas.width, blurCanvas.height, Math.round(blurRadius));
     }
     
-    // Apply saturation (180%)
+    // APPLY SATURATION (180%)
     const imageData = blurCtx.getImageData(0, 0, blurCanvas.width, blurCanvas.height);
     const data = imageData.data;
     for (let i = 0; i < data.length; i += 4) {
@@ -106,16 +107,14 @@ async function exportBanner(bannerElement, imgElement, cardElement, txtElement, 
     }
     blurCtx.putImageData(imageData, 0, 0);
     
-    // Draw box shadows FIRST (behind the card)
-    // CSS: 0 2px 4px 0 gray-950 10%, 0 8px 16px 0 gray-950 20%, 0 16px 48px 0 gray-950 30%
-    // gray-950 is rgb(10, 10, 10) - much darker for visible shadows
+    // DRAW BOX SHADOWS FIRST (BEHIND THE CARD)
     const shadows = [
       { offsetY: 2 * scale, blur: 4 * scale, color: 'rgba(10, 10, 10, 0.1)' },
       { offsetY: 8 * scale, blur: 16 * scale, color: 'rgba(10, 10, 10, 0.2)' },
       { offsetY: 16 * scale, blur: 48 * scale, color: 'rgba(10, 10, 10, 0.3)' }
     ];
     
-    // Draw shadows multiple times to make them more visible
+    // DRAW SHADOWS MULTIPLE TIMES TO MAKE THEM MORE VISIBLE
     for (let i = 0; i < 3; i++) {
       shadows.forEach(shadow => {
         ctx.save();
@@ -131,53 +130,52 @@ async function exportBanner(bannerElement, imgElement, cardElement, txtElement, 
       });
     }
     
-    // Now create a temporary canvas for the card content with blur and gradient
+    // CREATE A TEMPORARY CANVAS FOR THE CARD CONTENT WITH BLUR AND GRADIENT
     const cardCanvas = document.createElement('canvas');
     cardCanvas.width = cardWidth;
     cardCanvas.height = cardHeight;
     const cardCtx = cardCanvas.getContext('2d');
     
-    // Draw blurred background to card canvas
+    // DRAW BLURRED BACKGROUND TO CARD CANVAS
     cardCtx.drawImage(blurCanvas, padding, padding, cardWidth, cardHeight, 0, 0, cardWidth, cardHeight);
     
-    // Draw gradient overlay on card canvas
+    // DRAW GRADIENT OVERLAY ON CARD CANVAS
     const gradient = cardCtx.createLinearGradient(0, 0, cardWidth, cardHeight);
     gradient.addColorStop(0, 'rgba(255, 255, 255, 0.25)');
     gradient.addColorStop(1, 'rgba(255, 255, 255, 0.15)');
     cardCtx.fillStyle = gradient;
     cardCtx.fillRect(0, 0, cardWidth, cardHeight);
     
-    // Now clip and draw the card with rounded corners
+    // CLIP AND DRAW THE CARD WITH ROUNDED CORNERS
     ctx.save();
     ctx.beginPath();
     ctx.roundRect(cardX, cardY, cardWidth, cardHeight, cardRadius);
     ctx.clip();
     ctx.drawImage(cardCanvas, cardX, cardY);
     
-    // Draw inset highlights (within the clip region)
-    // CSS: inset 0 0 0 1px gray-50 6%, inset 2px 4px 4px 0 gray-50 12%
-    
-    // First inset: subtle border glow (1px, not scaled)
+    // DRAW INSET HIGHLIGHTS (WITHIN THE CLIP REGION)
+
+    // FIRST INSET
     ctx.strokeStyle = 'rgba(250, 250, 250, 0.06)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.roundRect(cardX + 0.5, cardY + 0.5, cardWidth - 1, cardHeight - 1, cardRadius);
     ctx.stroke();
     
-    // Top highlight gradient (inset light effect)
+    // TOP HIGHLIGHT GRADIENT (INSET LIGHT EFFECT)
     const topGradient = ctx.createLinearGradient(cardX, cardY, cardX, cardY + 12 * scale);
     topGradient.addColorStop(0, 'rgba(250, 250, 250, 0.12)');
     topGradient.addColorStop(1, 'rgba(250, 250, 250, 0)');
     ctx.fillStyle = topGradient;
     ctx.fillRect(cardX, cardY, cardWidth, 12 * scale);
     
-    // Generate and draw noise texture
+    // GENERATE AND DRAW NOISE TEXTURE
     const noiseCanvas = document.createElement('canvas');
     noiseCanvas.width = cardWidth;
     noiseCanvas.height = cardHeight;
     const noiseCtx = noiseCanvas.getContext('2d');
     
-    // Create noise using ImageData
+    // CREATE NOISE USING 'ImageData'
     const noiseData = noiseCtx.createImageData(cardWidth, cardHeight);
     for (let i = 0; i < noiseData.data.length; i += 4) {
       const noise = Math.random() * 255;
@@ -188,7 +186,7 @@ async function exportBanner(bannerElement, imgElement, cardElement, txtElement, 
     }
     noiseCtx.putImageData(noiseData, 0, 0);
     
-    // Draw noise with overlay blend mode at 15% opacity
+    // DRAW NOISE WITH OVERLAY BLEND MODE AT 15% OPACITY
     ctx.globalAlpha = 0.15;
     ctx.globalCompositeOperation = 'overlay';
     ctx.drawImage(noiseCanvas, cardX, cardY);
@@ -197,7 +195,7 @@ async function exportBanner(bannerElement, imgElement, cardElement, txtElement, 
     
     ctx.restore();
     
-    // Draw text (need to clip to card region)
+    // DRAW TEXT (NEED TO CLIP TO CARD REGION)
     ctx.save();
     ctx.beginPath();
     ctx.roundRect(cardX, cardY, cardWidth, cardHeight, cardRadius);
@@ -213,15 +211,15 @@ async function exportBanner(bannerElement, imgElement, cardElement, txtElement, 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
     
-    // Measure text to get actual dimensions
+    // MEASURE TEXT TO GET ACTUAL DIMENSIONS
     const metrics = ctx.measureText(text);
     const textHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
     
     const textX = cardX + cardWidth / 2;
-    // Center text visually by using alphabetic baseline and offsetting by half the visual height
+    // CENTER TEXT VISUALLY BY USING ALPHABETIC BASELINE AND OFFSETTING BY HALF THE VISUAL HEIGHT
     const textY = cardY + cardHeight / 2 + metrics.actualBoundingBoxAscent / 2;
     
-    // Parse text color to get RGB values
+    // PARSE TEXT COLOR TO GET RGB VALUES
     const colorMatch = textColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
     let r = 255, g = 255, b = 255;
     if (colorMatch) {
@@ -230,25 +228,21 @@ async function exportBanner(bannerElement, imgElement, cardElement, txtElement, 
       b = parseInt(colorMatch[3]);
     }
     
-    // Calculate shadow colors (using color-mix logic)
-    // Shadow 1: color-mix(in srgb, color 25%, transparent)
+    // CALCULATE SHADOW COLORS (USING 'color-mix' LOGIC)
+
     const shadow1 = `rgba(${r}, ${g}, ${b}, 0.25)`;
-    
-    // Shadow 2: color-mix(in srgb, color 20%, black 14%)
-    // This mixes: 20% of original color + 14% black = 34% total, rest transparent
+
     const r2 = Math.round(r * 0.2 / 0.34);
     const g2 = Math.round(g * 0.2 / 0.34);
     const b2 = Math.round(b * 0.2 / 0.34);
     const shadow2 = `rgba(${r2}, ${g2}, ${b2}, 0.34)`;
-    
-    // Shadow 3: color-mix(in srgb, color 20%, white 80%)
-    // This mixes: 20% of original color + 80% white = 100% opaque
+
     const r3 = Math.round(r * 0.2 + 255 * 0.8);
     const g3 = Math.round(g * 0.2 + 255 * 0.8);
     const b3 = Math.round(b * 0.2 + 255 * 0.8);
     const shadow3 = `rgba(${r3}, ${g3}, ${b3}, 1)`;
     
-    // Draw all shadow layers
+    // DRAW ALL SHADOW LAYERS
     ctx.shadowColor = shadow1;
     ctx.shadowBlur = 5 * scale;
     ctx.shadowOffsetX = 0;
@@ -266,7 +260,7 @@ async function exportBanner(bannerElement, imgElement, cardElement, txtElement, 
     ctx.shadowOffsetY = 1 * scale;
     ctx.fillText(text, textX, textY);
     
-    // Main text with 80% opacity and multiply blend mode
+    // MAIN TEXT WITH 80% OPACITY AND MULTIPLY BLEND MODE
     ctx.shadowColor = 'transparent';
     ctx.shadowBlur = 0;
     ctx.shadowOffsetX = 0;
@@ -278,7 +272,7 @@ async function exportBanner(bannerElement, imgElement, cardElement, txtElement, 
     
     ctx.restore();
     
-    // Download
+    // DOWNLOAD IMAGE
     canvas.toBlob((blob) => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -297,5 +291,5 @@ async function exportBanner(bannerElement, imgElement, cardElement, txtElement, 
   }
 }
 
-// Export the function for use in main.js
+// EXPORT THE FUNCTION FOR USE IN 'main.js'
 window.exportBanner = exportBanner;
