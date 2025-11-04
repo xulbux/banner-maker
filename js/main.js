@@ -1,6 +1,6 @@
 const initTxt = `Sample
 Banner Text`;
-const initTxtColor = '#FFFFFF';
+const initTxtColor = '#000000';
 const initCardTint = '#FFFFFF';
 const initImg = 'assets/img/banner_img_sample.jpg';
 const initFixWidth = null;
